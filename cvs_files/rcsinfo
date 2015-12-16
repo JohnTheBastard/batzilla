@@ -1,0 +1,22 @@
+# The "rcsinfo" file is used to control templates with which the editor
+# is invoked on commit and import.
+#
+# The first entry on a line is a regular expression which is tested
+# against the directory that the change is being made to, relative to the
+# $CVSROOT.  For the first match that is found, then the remainder of the
+# line is the name of the file that contains the template.
+#
+# If the repository name does not match any of the regular expressions in this
+# file, the "DEFAULT" line is used, if it is specified.
+#
+# If the name "ALL" appears as a regular expression it is always used
+# in addition to the first matching regex or "DEFAULT".
+
+# Prompt for PR #:
+alex/.*     $CVSROOT/CVSROOT/rcs_prompt_pr
+config/.*   $CVSROOT/CVSROOT/rcs_prompt_pr
+cpp/.*      $CVSROOT/CVSROOT/rcs_prompt_pr
+devadmin/.* $CVSROOT/CVSROOT/rcs_prompt_pr
+edg/.*      $CVSROOT/CVSROOT/rcs_prompt_pr
+insight/.*  $CVSROOT/CVSROOT/rcs_prompt_pr
+ALL         $CVSROOT/CVSROOT/rcs_prompt_pr

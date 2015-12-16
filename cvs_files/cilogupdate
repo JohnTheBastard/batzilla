@@ -1,0 +1,177 @@
+#!/usr/local/bin/perl -w
+
+# $Source: /home/hydra1/parasoft/src/devadmin/batzilla/cvs_files/cilogupdate,v $
+
+# (C) Copyright ParaSoft Corporation 1996.  All rights reserved.
+# THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF ParaSoft
+# The copyright notice above does not evidence any
+# actual or intended publication of such source code.
+
+# $Author: jhearn $          $Locker:  $
+# $Date: 2006/08/09 20:17:58 $
+# $Log: cilogupdate,v $
+# Revision 1.4  2006/08/09 20:17:58  jhearn
+# fixed white space (4 spaces instead of 2 for tab) and M-x untabify.
+#
+# Revision 1.3  2006/08/04 22:19:06  jhearn
+# Better fix to problem with multiple PRs.
+#
+# Revision 1.2  2006/08/04 20:08:30  jhearn
+# jon's version, with fixes for multiple PRs for Batzilla.
+#
+# Revision 32.13  2006/08/01 22:58:31  jwilkes
+# Upgraded perl on hydra.  Use batzilla stuff.
+# Also, fixed batzilla-specific bug in reading of cvs log.
+#
+# Revision 32.12  2006/08/01 00:38:14  jwilkes
+# Whoops.  Partially reverted until I can update perl on hydra.
+#
+# Revision 32.11  2006/07/31 22:39:55  jwilkes
+# Batzilla changes.
+#
+# Revision 32.10  2004/12/28 22:51:21  jwilkes
+# Put CVS_USER in global DIFFLOG when appropriate.
+#
+# Revision 32.9  2004/10/18 21:55:07  jwilkes
+# Silence warnings about undefined HOME.
+#
+# Revision 32.8  2004/10/18 20:29:19  jwilkes
+# Update for CVS 1.12.9 format strings.
+#
+# Revision 32.7  2004/01/21 18:03:20  paul
+# When executed via pserver, this script runs as 'paul' but in root
+# environment. In particular, ENV{HOME} is "/". This then caused it
+# to attempt to write /DIFFLOG and fail with EPERM.
+#
+# Added check for $home to be writable; if not try to find a "better"
+# home.
+#
+# Revision 32.6  2003/04/18 17:05:01  leif
+# Moved global difflog to a safer place.
+#
+# Revision 32.5  2003/03/26 21:13:04  leif
+# Made global difflog contingent upon the existence of ~devtest.
+#
+# Revision 32.4  2002/10/04 15:44:55  leif
+# Put user names in global difflog.
+#
+# Revision 32.3  2002/10/04 01:29:24  leif
+# Make that ~devtest/dv/.DIFFLOG.
+#
+# Revision 32.2  2002/10/04 01:00:23  leif
+# Create a global difflog in ~devtest.
+#
+# Revision 32.1  2001/10/17 01:45:16  paul
+# Original code
+#
+
+use strict;
+# use warnings;
+
+my ($dir, %fileRevisionPairs);
+
+if ($ARGV[1]) {
+    # format strings for CVS 1.12.9 and beyond:
+    # invoked with, e.g.:
+    # insight/newruntime Mutex.cc 32.3 Mutex.h 32.5
+    $dir = shift @ARGV;
+    %fileRevisionPairs = @ARGV;
+} else {
+    # pre-1.12.9 CVS format strings
+    # invoked with, e.g.:
+    # "insight/newruntime Mutex.cc,32.3 Mutex.h,32.5"
+    my (@files, @fileRevisionPairs);
+    ($dir, @files) = split(" ", $ARGV[0]);
+    foreach (@files) {
+        my @pair = split(",", $_);
+        push(@fileRevisionPairs, @pair);
+    }
+    %fileRevisionPairs = @fileRevisionPairs;
+}
+
+my ($now) = scalar localtime();
+
+my $home = $ENV{'HOME'};
+if (!defined($home) || -d $home || ! -w $home) {
+    $home = (getpwuid($<))[7];
+}
+my $globaldifflog = "/home/hydra1/parasoft/src/DIFFLOG";
+my $cvs_user = $ENV{'CVS_USER'};
+my $user = $ENV{'USER'};
+if (defined($cvs_user) &&
+    $user eq "cvs") {           # excessive paranoia
+    $user = $cvs_user;
+}
+
+open(OUT, ">> $home/DIFFLOG") || die "$!";
+if (-f $globaldifflog) {
+    open(DOUT, ">> $globaldifflog") || die "$!";
+}
+
+# Needed for Batzilla
+my @prs;
+get_prs();
+
+foreach my $file (keys %fileRevisionPairs) {
+    my $rev = $fileRevisionPairs{$file}; 
+    print OUT "ci $dir/$file $rev $now\n";
+    if (-f $globaldifflog) {
+        print DOUT "$user ci $dir/$file $rev $now\n";
+    }
+    update_batzilla($file, $rev) if @prs;
+}
+
+sub get_prs {
+    my $logMessage = -1;
+    foreach (<STDIN>) {
+        if ($logMessage == -1) { # before /^Log Message:/
+            next unless (/^Log Message/);
+            $logMessage = 0;
+        } elsif ($logMessage == 0) { # line immediately after /^Log Message:/
+            if (/^PR(\d+)\b/) {
+                # Only match PR123 if it is the first token in the comment.
+                # This protects against false matches for comments such as:
+                #   PR456.  Fixed. See also
+                #   PR123.
+                @prs = ($1);
+	    }
+            $logMessage = 1;
+        }
+        # some line after /^Log Message:/
+        @prs = split(/[,\s]+/,$1) if (/^PRs[:\s]\s*([\s,\d]+)/);
+    }
+    return;
+}
+
+sub update_batzilla {
+    # my $db_host = "dev3";
+    my $db_host = "camel";
+    my $domain = "parasoft.com";
+    my $sql_user = "bats";
+    my $sql_password = "batmantis00";
+    my $sql_db = "DBI:mysql:database=fixes";
+    my $db_table = "fixes.fixes";
+    my $path_file = "$dir/$_[0]";
+    my $devtest = 0;
+    my $insrel = 0;
+    my $revision = $_[1];
+        
+    use DBI;
+    
+    # Note that AutoCommit settings are ignored by the MyISAM database engine.
+    # All MyISAM tables behave as though AutoCommit is enabled.
+    my $dbh = DBI->connect("$sql_db;host=$db_host.$domain",
+                           "$sql_user", "$sql_password", 
+                           {'RaiseError' => 1, AutoCommit => 1});
+    my $sth = $dbh->prepare_cached(qq{INSERT IGNORE INTO $db_table } 
+				   . qq{(pr, file, revision, committer, date, devtest, insrel) }
+				   . qq{VALUES (?, ?, ?, ?, ?, ?, ?)})
+      or die "Couldn't prepare statement: " . $dbh->errstr;
+    foreach my $pr (@prs) {
+        $sth->execute($pr, $path_file, $revision, $user,
+                      $now, $devtest, $insrel)
+          or die "Couldn't execute statement:". $dbh->errstr;
+    }
+    $sth->finish;
+    return;
+}

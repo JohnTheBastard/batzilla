@@ -1,0 +1,93 @@
+/* 
+ * Custom rules for skins/standard/global.css.
+ * The rules you put here override rules in that stylesheet.
+ */
+
+/*
+ * Modified by jhearn 7/19/2006
+ * Most of this CSS code taken (and modified) from:
+ * https://bugzilla.mozilla.org/skins/standard/global.css
+ */
+
+
+body {
+    margin: 10px;
+    margin-top: 5;
+    min-width: 610px;
+}
+
+body, td, th, input { /* redundant rules for bad browsers  */
+    font-family: verdana, sans-serif;
+    font-size: small;
+}
+
+
+/* banner (begin) */
+#banner {
+    background: #455372 url("global/para_header.png") bottom left repeat-x;
+    min-height: 39px;
+    height: 100px;
+    padding: 0;
+    voice-family: "\"}\"";
+    voice-family: inherit;
+    clear: right;
+} #ignored {}
+
+
+#banner p
+{
+    margin: 0;
+    margin-bottom: -13px;
+    margin-right: 20px;
+    padding: 0;
+}
+
+#banner-name
+{
+    color: #34415F; /* Hide from Safari */
+    margin-top: 0px;
+    font-size: 0%; /* Hide from everyone else */
+    height: 100px;
+    background: transparent no-repeat url("global/para_logo.png") right;
+}
+
+#banner-version
+{
+    float: right;
+    font-family: verdana, sans-serif;
+    font-size: 75%;
+    background: transparent;
+}
+
+#banner-version a
+{
+    color: #999999;
+    text-decoration: none; /* No underlined link */
+}
+
+p#banner-version { /* hide from NN4 */
+    color: #999999;
+    text-align: bottom;
+    font-size: 75%;
+}
+
+
+#bat_banner {
+    background: #455372 url("global/bat_header.png") bottom left repeat-x;
+    min-height: 39px;
+    height: 100px;
+    padding: 0;
+    voice-family: "\"}\"";
+    voice-family: inherit;
+    clear: right;
+} #ignored {}
+
+#bat_banner p
+{
+    margin: 0;
+    margin-bottom: -13px;
+    margin-right: 20px;
+    padding: 0;
+}
+/* banner (end) */
+
